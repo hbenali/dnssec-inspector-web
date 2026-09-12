@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNSSEC Inspector — Chain of Trust Validator</title>
+
+    <!-- SEO -->
+    <meta name="description" content="Free DNSSEC validator. Check whether a domain's DNSSEC chain of trust is signed and valid, inspect its DS and DNSKEY records, and see exactly why validation failed if it did.">
+    <meta name="keywords" content="DNSSEC, DNSSEC checker, DS record, DNSKEY, chain of trust, RRSIG, DNS security, domain validation">
+    <meta name="author" content="Houssem Ben Ali">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://dnssec.hbenali.ovh/">
+
+    <!-- Security (static hosting: no custom HTTP headers, so CSP/referrer are set here; X-Frame-Options/X-Content-Type-Options need a real header and aren't achievable via meta) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://dns.google; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DNSSEC Inspector — Chain of Trust Validator">
+    <meta property="og:description" content="Check whether a domain's DNSSEC chain of trust is signed and valid, inspect its DS and DNSKEY records, and see exactly why validation failed if it did.">
+    <meta property="og:url" content="https://dnssec.hbenali.ovh/">
+    <meta property="og:site_name" content="DNSSEC Inspector">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:image" content="https://dnssec.hbenali.ovh/icon-512.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="DNSSEC Inspector — Chain of Trust Validator">
+    <meta name="twitter:description" content="Check whether a domain's DNSSEC chain of trust is signed and valid, inspect its DS and DNSKEY records, and see exactly why validation failed if it did.">
+    <meta name="twitter:image" content="https://dnssec.hbenali.ovh/icon-512.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="theme-color" content="#4c1d95">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DNSSEC Inspector">
+
+    <!-- dns.google is only hit on-demand after a lookup -->
+    <link rel="dns-prefetch" href="https://dns.google">
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "url": "https://dnssec.hbenali.ovh/",
+                "name": "DNSSEC Inspector",
+                "description": "Free DNSSEC chain-of-trust validator.",
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": "https://dnssec.hbenali.ovh/?domain={search_term_string}",
+                    "query-input": "required name=search_term_string"
+                }
+            },
+            {
+                "@type": "WebApplication",
+                "name": "DNSSEC Inspector",
+                "url": "https://dnssec.hbenali.ovh/",
+                "applicationCategory": "UtilitiesApplication",
+                "operatingSystem": "Any",
+                "description": "Check whether a domain's DNSSEC chain of trust is signed and valid, inspect DS and DNSKEY records, and see why validation failed if it did.",
+                "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+            }
+        ]
+    }
+    </script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-1: #f5f3ff;
+            --bg-2: #ede9fe;
+            --text: #1e1b2e;
+            --text-muted: #5b5470;
+            --text-soft: #7c7593;
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --card-border: rgba(255, 255, 255, 0.6);
+            --accent: #7c3aed;
+            --accent-dark: #5b21b6;
+            --accent-solid: #6d28d9;
+            --accent-solid-hover: #5b21b6;
+            --input-bg: #ffffff;
+            --input-border: rgba(124, 58, 237, 0.25);
+            --chip-bg: #ede9fe;
+            --chip-bg2: #ede4ff;
+            --shadow-color: rgba(76, 29, 149, 0.18);
+            --good: #15803d;
+            --good-bg: rgba(21, 128, 61, 0.12);
+            --bad: #b91c1c;
+            --bad-bg: rgba(185, 28, 28, 0.12);
+            --neutral: #57534e;
+            --neutral-bg: rgba(87, 83, 78, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-1: #150f26;
+                --bg-2: #1e1533;
+                --text: #ece9f7;
+                --text-muted: #a79fc2;
+                --text-soft: #8b83a8;
+                --card-bg: rgba(30, 21, 51, 0.78);
+                --card-border: rgba(255, 255, 255, 0.08);
+                --accent: #a78bfa;
+                --accent-dark: #c4b5fd;
+                --accent-solid: #7c3aed;
+                --accent-solid-hover: #6d28d9;
+                --input-bg: #1a1330;
+                --input-border: rgba(167, 139, 250, 0.3);
+                --chip-bg: #241a3d;
+                --chip-bg2: #2a1f45;
+                --shadow-color: rgba(0, 0, 0, 0.5);
+                --good: #4ade80;
+                --good-bg: rgba(74, 222, 128, 0.12);
+                --bad: #f87171;
+                --bad-bg: rgba(248, 113, 113, 0.14);
+                --neutral: #a8a29e;
+                --neutral-bg: rgba(168, 162, 158, 0.12);
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg-1: #150f26;
+            --bg-2: #1e1533;
+            --text: #ece9f7;
+            --text-muted: #a79fc2;
+            --text-soft: #8b83a8;
+            --card-bg: rgba(30, 21, 51, 0.78);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent: #a78bfa;
+            --accent-dark: #c4b5fd;
+            --accent-solid: #7c3aed;
+            --accent-solid-hover: #6d28d9;
+            --input-bg: #1a1330;
+            --input-border: rgba(167, 139, 250, 0.3);
+            --chip-bg: #241a3d;
+            --chip-bg2: #2a1f45;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --good: #4ade80;
+            --good-bg: rgba(74, 222, 128, 0.12);
+            --bad: #f87171;
+            --bad-bg: rgba(248, 113, 113, 0.14);
+            --neutral: #a8a29e;
+            --neutral-bg: rgba(168, 162, 158, 0.12);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(145deg, var(--bg-1) 0%, var(--bg-2) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2.5rem 1.25rem 4rem;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-toggle {
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: 50%;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .theme-toggle:hover { transform: scale(1.08); border-color: var(--accent); }
+
+        header {
+            text-align: center;
+            margin-bottom: 1.75rem;
+        }
+
+        header h1 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.35rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.98rem;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 1.4rem;
+            box-shadow: 0 12px 32px var(--shadow-color);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .lookup-row {
+            display: flex;
+            gap: 0.6rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border-radius: 0.8rem;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        button {
+            padding: 0.75rem 1.3rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            background: var(--accent-solid);
+            color: #ffffff;
+            border: none;
+            border-radius: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover { background: var(--accent-solid-hover); }
+        button:active { transform: scale(0.97); }
+
+        .examples {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-soft);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem 0.6rem;
+            align-items: center;
+        }
+
+        .examples a {
+            color: var(--accent);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .examples a:hover { text-decoration: underline; }
+
+        .hidden { display: none !important; }
+
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: -0.15em;
+            margin-right: 0.4rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .verdict {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.9rem;
+            padding: 1.1rem 1.2rem;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .verdict.good { background: var(--good-bg); color: var(--good); }
+        .verdict.bad { background: var(--bad-bg); color: var(--bad); }
+        .verdict.neutral { background: var(--neutral-bg); color: var(--neutral); }
+
+        .verdict .icon { font-size: 1.8rem; line-height: 1; }
+        .verdict .title { font-weight: 800; font-size: 1.15rem; margin-bottom: 0.2rem; }
+        .verdict .detail { font-size: 0.9rem; color: var(--text-muted); font-weight: 400; }
+
+        .section-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-soft);
+            margin: 1.1rem 0 0.6rem;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        .record-list { list-style: none; }
+
+        .record-item {
+            background: var(--chip-bg);
+            border-radius: 0.7rem;
+            padding: 0.7rem 0.9rem;
+            margin-bottom: 0.5rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            word-break: break-all;
+        }
+
+        .record-item .tag {
+            display: inline-block;
+            background: var(--accent-solid);
+            color: #fff;
+            font-family: -apple-system, sans-serif;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.12rem 0.5rem;
+            border-radius: 2em;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .empty-note {
+            color: var(--text-soft);
+            font-size: 0.88rem;
+            font-style: italic;
+        }
+
+        .raw-toggle {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 0.4rem 0;
+            cursor: pointer;
+        }
+
+        .raw-json {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 0.7rem;
+            padding: 0.9rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.76rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 320px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+        }
+
+        .guide-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .guide-tab {
+            background: var(--chip-bg);
+            color: var(--text-muted);
+            border: none;
+            border-radius: 2em;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .guide-tab.active { background: var(--accent-solid); color: #fff; }
+
+        .guide-panel { display: none; font-size: 0.92rem; color: var(--text-muted); }
+        .guide-panel.active { display: block; }
+        .guide-panel h3 { color: var(--text); font-size: 1rem; margin: 0.9rem 0 0.4rem; }
+        .guide-panel h3:first-child { margin-top: 0; }
+        .guide-panel p { margin-bottom: 0.6rem; }
+        .guide-panel code {
+            background: var(--chip-bg);
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.3rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85em;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-soft);
+        }
+
+        footer a { color: var(--text-soft); }
+        footer a:hover { color: var(--accent); }
+
+        @media (max-width: 480px) {
+            .lookup-row { flex-direction: column; }
+            .glass-card { padding: 1.1rem; border-radius: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-row">
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle theme">🌙</button>
+        </div>
+
+        <header>
+            <h1>🛡️ DNSSEC Inspector</h1>
+            <p>Validate a domain's DNSSEC chain of trust — DS, DNSKEY, and why it failed if it did.</p>
+        </header>
+
+        <div class="glass-card">
+            <form id="lookupForm">
+                <label for="domainInput" class="hidden">Domain name</label>
+                <div class="lookup-row">
+                    <input type="text" id="domainInput" placeholder="example.com" autocomplete="off" spellcheck="false" required>
+                    <button type="submit" id="lookupBtn">Check DNSSEC</button>
+                </div>
+            </form>
+            <div class="examples">
+                Try:
+                <a data-domain="cloudflare.com">cloudflare.com</a>
+                <a data-domain="github.com">github.com</a>
+                <a data-domain="dnssec-failed.org">dnssec-failed.org</a>
+                <a data-domain="hbenali.ovh">hbenali.ovh</a>
+            </div>
+        </div>
+
+        <div id="feedback" class="glass-card hidden"></div>
+
+        <div id="results" class="glass-card hidden"></div>
+
+        <div class="glass-card">
+            <div class="guide-tabs">
+                <button type="button" class="guide-tab active" data-panel="about">About DNSSEC</button>
+                <button type="button" class="guide-tab" data-panel="howworks">How Validation Works</button>
+                <button type="button" class="guide-tab" data-panel="issues">Common Failures</button>
+            </div>
+
+            <div class="guide-panel active" id="panel-about">
+                <p>DNSSEC (Domain Name System Security Extensions) adds cryptographic signatures to DNS records, so a resolver can prove that the answer it received hasn't been tampered with in transit — protecting against cache poisoning and man-in-the-middle DNS spoofing.</p>
+                <p>It does <strong>not</strong> encrypt DNS traffic (that's a separate concern, handled by DoH/DoT) — it only authenticates it.</p>
+                <h3>The chain of trust</h3>
+                <p>Each zone signs its own records with a private key (<code>DNSKEY</code>). A hash of that key — the <code>DS</code> record — is published in the <strong>parent</strong> zone, signed by the parent's own key. This chain continues up to the root zone, which is trusted by every validating resolver out of the box.</p>
+            </div>
+
+            <div class="guide-panel" id="panel-howworks">
+                <p>This tool asks Google's public resolver (<code>dns.google</code>, DNSSEC-aware) to look up the domain and reports its own <code>AD</code> (Authenticated Data) flag — the same signal your ISP's or browser's resolver relies on.</p>
+                <h3>Records checked</h3>
+                <p><code>DS</code> — published in the parent zone; its presence is what makes a domain "signed" at all.</p>
+                <p><code>DNSKEY</code> — the zone's own public keys: a Key Signing Key (KSK, flag 257) and usually a Zone Signing Key (ZSK, flag 256).</p>
+                <p><code>RRSIG</code> — the actual signature attached to each signed record set, included inline when a lookup is made with the DNSSEC OK bit set.</p>
+            </div>
+
+            <div class="guide-panel" id="panel-issues">
+                <h3>Not signed</h3>
+                <p>No <code>DS</code> record exists at the parent zone. This is the default for most domains — DNSSEC is opt-in, not a failure by itself.</p>
+                <h3>Validation failed (bogus)</h3>
+                <p>A <code>DS</code> record exists, but the signature doesn't check out — usually a stale <code>DS</code> left after rotating <code>DNSKEY</code>s, an expired <code>RRSIG</code>, or a registrar/DNS-host misconfiguration. Browsers and resolvers that enforce DNSSEC will refuse to resolve the domain at all until this is fixed.</p>
+                <h3>Expired signatures</h3>
+                <p><code>RRSIG</code> records carry validity windows. If a zone stops re-signing (e.g. an automation job breaks), everything downstream starts failing validation once the signatures expire — a common self-inflicted outage.</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Free &amp; open source — <a href="https://github.com/hbenali/dnssec-inspector-web" target="_blank" rel="noopener">source on GitHub</a> · <a href="https://hbenali.ovh" target="_blank" rel="noopener noreferrer">hbenali.ovh</a></p>
+        </footer>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        const themeToggle = document.getElementById('themeToggle');
+        const lookupForm = document.getElementById('lookupForm');
+        const domainInput = document.getElementById('domainInput');
+        const feedback = document.getElementById('feedback');
+        const results = document.getElementById('results');
+
+        // ---------- Theme ----------
+        const THEME_KEY = 'dnssecInspectorTheme';
+
+        function getStoredTheme() {
+            try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+        }
+
+        function effectiveTheme() {
+            const stored = getStoredTheme();
+            if (stored === 'light' || stored === 'dark') return stored;
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function applyTheme() {
+            const stored = getStoredTheme();
+            if (stored === 'light' || stored === 'dark') {
+                document.documentElement.setAttribute('data-theme', stored);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+            themeToggle.textContent = effectiveTheme() === 'dark' ? '☀️' : '🌙';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+            try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+            applyTheme();
+        });
+
+        applyTheme();
+
+        // ---------- Guide tabs ----------
+        document.querySelectorAll('.guide-tab').forEach((tab) => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.guide-tab').forEach((t) => t.classList.remove('active'));
+                document.querySelectorAll('.guide-panel').forEach((p) => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+            });
+        });
+
+        // ---------- Examples ----------
+        document.querySelectorAll('.examples a').forEach((a) => {
+            a.addEventListener('click', () => {
+                domainInput.value = a.dataset.domain;
+                runLookup(a.dataset.domain);
+            });
+        });
+
+        // ---------- Domain extraction & URL param ----------
+        function extractDomain(input) {
+            try {
+                if (!input.startsWith('http://') && !input.startsWith('https://')) {
+                    input = 'https://' + input;
+                }
+                return new URL(input).hostname;
+            } catch {
+                return input.replace(/^https?:\/\//, '').split('/')[0].trim();
+            }
+        }
+
+        function getQueryParam(name) {
+            return new URLSearchParams(window.location.search).get(name);
+        }
+
+        lookupForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const raw = domainInput.value.trim();
+            if (!raw) return;
+            const domain = extractDomain(raw);
+            domainInput.value = domain;
+            runLookup(domain);
+        });
+
+        const domainParam = getQueryParam('domain');
+        if (domainParam) {
+            const normalized = extractDomain(domainParam);
+            domainInput.value = normalized;
+            runLookup(normalized);
+        }
+
+        // ---------- DNS-over-HTTPS ----------
+        async function doh(name, type) {
+            const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}&do=1`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`DNS query failed (HTTP ${res.status})`);
+            return res.json();
+        }
+
+        const DS_DIGEST_NAMES = { 1: 'SHA-1', 2: 'SHA-256', 3: 'GOST R 34.11-94', 4: 'SHA-384' };
+        const ALGO_NAMES = {
+            5: 'RSA/SHA-1', 7: 'RSASHA1-NSEC3-SHA1', 8: 'RSA/SHA-256', 10: 'RSA/SHA-512',
+            13: 'ECDSA P-256/SHA-256', 14: 'ECDSA P-384/SHA-384', 15: 'Ed25519', 16: 'Ed448'
+        };
+
+        const EDE_MESSAGES = {
+            1: 'Unsupported DNSKEY algorithm', 2: 'Unsupported DS digest type',
+            6: 'DNSSEC bogus (signature verification failed)', 7: 'Signature expired',
+            8: 'Signature not yet valid', 9: 'DNSKEY missing that matches a DS record',
+            10: 'RRSIGs missing', 11: 'No zone key found for the signed record',
+            12: 'NSEC missing', 23: 'Unsupported NSEC3 iteration count'
+        };
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"]/g, (m) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+            }[m]));
+        }
+
+        function parseDnskey(data) {
+            const parts = data.split(' ');
+            const flags = parseInt(parts[0], 10);
+            const algo = parseInt(parts[2], 10);
+            return {
+                role: flags === 257 ? 'KSK' : flags === 256 ? 'ZSK' : `flags ${flags}`,
+                algo: ALGO_NAMES[algo] || `algorithm ${algo}`,
+                raw: data
+            };
+        }
+
+        function parseDs(data) {
+            const parts = data.split(' ');
+            const keyTag = parts[0];
+            const algo = parseInt(parts[1], 10);
+            const digestType = parseInt(parts[2], 10);
+            return {
+                keyTag,
+                algo: ALGO_NAMES[algo] || `algorithm ${algo}`,
+                digestType: DS_DIGEST_NAMES[digestType] || `type ${digestType}`,
+                weakDigest: digestType === 1,
+                raw: data
+            };
+        }
+
+        function renderVerdict(kind, title, detail) {
+            const icon = kind === 'good' ? '✅' : kind === 'bad' ? '⚠️' : '➖';
+            return `
+                <div class="verdict ${kind}">
+                    <div class="icon">${icon}</div>
+                    <div>
+                        <div class="title">${escapeHtml(title)}</div>
+                        <div class="detail">${detail}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function runLookup(domain) {
+            feedback.innerHTML = '<span class="spinner"></span>Checking DNSSEC for ' + escapeHtml(domain) + '...';
+            feedback.classList.remove('hidden');
+            results.classList.add('hidden');
+            results.innerHTML = '';
+
+            try {
+                const [dsRes, dnskeyRes] = await Promise.all([
+                    doh(domain, 'DS'),
+                    doh(domain, 'DNSKEY')
+                ]);
+
+                const dsRecords = (dsRes.Answer || []).filter((r) => r.type === 43).map((r) => parseDs(r.data));
+                const dnskeyRecords = (dnskeyRes.Answer || []).filter((r) => r.type === 48).map((r) => parseDnskey(r.data));
+
+                const signed = dsRecords.length > 0;
+                const validated = dnskeyRes.AD === true;
+                const failed = signed && dnskeyRes.Status === 2;
+
+                const edeCodes = (dnskeyRes.extended_dns_errors || dsRes.extended_dns_errors || [])
+                    .map((e) => EDE_MESSAGES[e.info_code] || e.extra_text || `error ${e.info_code}`);
+
+                let verdictHtml;
+                if (!signed) {
+                    verdictHtml = renderVerdict('neutral', 'Not signed',
+                        `${escapeHtml(domain)} has no DS record at its parent zone — it isn't using DNSSEC. This is the default for most domains, not necessarily a problem.`);
+                } else if (validated) {
+                    verdictHtml = renderVerdict('good', 'DNSSEC validated',
+                        `The chain of trust from the root down to ${escapeHtml(domain)} checks out. A DNSSEC-aware resolver will accept its answers as authentic.`);
+                } else if (failed) {
+                    const reason = edeCodes.length ? escapeHtml(edeCodes.join('; ')) : 'signature verification failed';
+                    verdictHtml = renderVerdict('bad', 'DNSSEC validation FAILED',
+                        `${escapeHtml(domain)} publishes a DS record, but the chain does not validate (${reason}). A DNSSEC-enforcing resolver will refuse to resolve this domain at all.`);
+                } else {
+                    verdictHtml = renderVerdict('neutral', 'Indeterminate',
+                        `${escapeHtml(domain)} has a DS record, but the validating resolver did not set the authenticated flag. Try again, or check with a second resolver.`);
+                }
+
+                let html = verdictHtml;
+
+                html += '<div class="section-title">DS records (parent zone)</div>';
+                if (dsRecords.length) {
+                    html += '<ul class="record-list">' + dsRecords.map((d) => `
+                        <li class="record-item"><span class="tag">DS</span>Key tag ${escapeHtml(d.keyTag)} · ${escapeHtml(d.algo)} · digest ${escapeHtml(d.digestType)}${d.weakDigest ? ' ⚠️ deprecated' : ''}</li>
+                    `).join('') + '</ul>';
+                } else {
+                    html += '<p class="empty-note">No DS records found.</p>';
+                }
+
+                html += '<div class="section-title">DNSKEY records (zone)</div>';
+                if (dnskeyRecords.length) {
+                    html += '<ul class="record-list">' + dnskeyRecords.map((k) => `
+                        <li class="record-item"><span class="tag">${escapeHtml(k.role)}</span>${escapeHtml(k.algo)}</li>
+                    `).join('') + '</ul>';
+                } else {
+                    html += '<p class="empty-note">No DNSKEY records found.</p>';
+                }
+
+                const rawId = 'raw-' + Math.random().toString(36).slice(2);
+                html += `<button type="button" class="raw-toggle" data-target="${rawId}">Show raw DNS responses ▾</button>`;
+                html += `<pre class="raw-json hidden" id="${rawId}">${escapeHtml(JSON.stringify({ ds: dsRes, dnskey: dnskeyRes }, null, 2))}</pre>`;
+
+                results.innerHTML = html;
+                results.classList.remove('hidden');
+
+                const rawToggle = results.querySelector('.raw-toggle');
+                rawToggle.addEventListener('click', () => {
+                    const pre = document.getElementById(rawToggle.dataset.target);
+                    const show = pre.classList.toggle('hidden');
+                    rawToggle.textContent = show ? 'Show raw DNS responses ▾' : 'Hide raw DNS responses ▴';
+                });
+
+            } catch (err) {
+                results.innerHTML = renderVerdict('bad', 'Lookup failed', escapeHtml(err.message));
+                results.classList.remove('hidden');
+            } finally {
+                feedback.classList.add('hidden');
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    })();
+    </script>
+</body>
+</html>

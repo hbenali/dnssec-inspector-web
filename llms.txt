@@ -1,0 +1,8 @@
+# DNSSEC Inspector
+
+> Free, single-page tool to validate a domain's DNSSEC chain of trust, inspect its DS and DNSKEY records, and diagnose why validation failed.
+
+Static site (no backend, no build step, no dependencies) at https://dnssec.hbenali.ovh — a single `index.html` calling public APIs directly from the browser. Uses DNS-over-HTTPS (`dns.google`) with the DNSSEC OK bit set, reads the resolver's own `AD` flag to determine validation status, and surfaces Extended DNS Error (RFC 8914) reasons when the chain is broken.
+
+## Pages
+- [DNSSEC Inspector](https://dnssec.hbenali.ovh/): the tool itself, plus a guide covering DNSSEC basics, how chain-of-trust validation works, and common failure modes.
