@@ -1,8 +1,13 @@
-const CACHE_NAME = 'dnssec-inspector-v1';
+const CACHE_NAME = 'dnssec-inspector-v2';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/404.html',
+  '/site.css?v=3',
+  '/fonts/big-shoulders-latin-wght.woff2',
+  '/fonts/newsreader-latin-wght.woff2',
+  '/fonts/newsreader-italic-latin-wght.woff2',
+  '/fonts/jetbrains-mono-latin-wght.woff2',
   '/manifest.json',
   '/favicon.svg',
   '/favicon.ico',

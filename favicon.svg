@@ -1,14 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7c3aed"/>
-      <stop offset="1" stop-color="#4c1d95"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <g fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="512" height="512" rx="112" fill="#0c1218"/>
+  <g fill="none" stroke="#e9a23b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
     <path d="M256 84 L372 124 V232 C372 314 322 372 256 396 C190 372 140 314 140 232 V124 Z"/>
   </g>
-  <path d="M198 244 L238 284 L322 196" fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="256" y="464" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="700" fill="#ffffff" text-anchor="middle">DNSSEC</text>
+  <path d="M198 244 L238 284 L322 196" fill="none" stroke="#e9a23b" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="464" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="700" fill="#e9a23b" text-anchor="middle">DNSSEC</text>
 </svg>

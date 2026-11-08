@@ -11,7 +11,7 @@ No backend, no build step, no dependencies — it's one static `index.html` call
 - **Failure diagnosis** — surfaces the resolver's Extended DNS Error (RFC 8914) reason when validation fails (expired signature, missing DNSKEY, etc.)
 - **Raw JSON viewer** for both DNS responses
 - **Guide section** — DNSSEC overview, how validation works, common failure modes
-- **Dark mode** with persisted preference
+- Dark editorial design with self-hosted fonts (see `fonts/`)
 - Fully responsive and accessible
 
 ## Running locally
