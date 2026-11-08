@@ -1,9 +1,9 @@
-const CACHE_NAME = 'dnssec-inspector-v2';
+const CACHE_NAME = 'dnssec-inspector-v3';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/404.html',
-  '/site.css?v=3',
+  '/site.css?v=4',
   '/fonts/big-shoulders-latin-wght.woff2',
   '/fonts/newsreader-latin-wght.woff2',
   '/fonts/newsreader-italic-latin-wght.woff2',
